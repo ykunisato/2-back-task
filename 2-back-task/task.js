@@ -20,15 +20,14 @@ const fixation = {
 const total_trials = 30;
 const digits = [];
 for (let i = 0; i < total_trials; i++) {
-  digits.push(jsPsych.randomization.randomInt(1, 10).toString());
+  digits.push(jsPsych.randomization.randomInt(1, 9).toString());
 }
 
 const trial_variables = digits.map((digit, index, arr) => {
   const is_target = index >= 2 && digit === arr[index - 2];
   return {
     stimulus_digit: digit,
-    is_target: is_target,
-    correct_response: is_target ? 0 : null
+    is_target: is_target
   };
 });
 
@@ -42,16 +41,16 @@ const nback_trial = {
   trial_duration: 1500,
   response_ends_trial: true,
   data: {
-    task: "test",
+    task: "2-back",
     condition: "2-back"
   },
   on_finish: function(data) {
     const is_target = jsPsych.evaluateTimelineVariable("is_target");
     data.stimulus = jsPsych.evaluateTimelineVariable("stimulus_digit");
-    data.correct_response = is_target ? 0 : null;
+    data.correct_response = is_target ? "press" : "no_press";
     data.is_target = is_target;
     const pressed = data.response !== null;
-    data.correct = is_target ? pressed : !pressed;
+    data.correct = (is_target && pressed) || (!is_target && !pressed);
   }
 };
 

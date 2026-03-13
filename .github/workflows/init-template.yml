@@ -1,0 +1,120 @@
+name: Initialize from Template
+
+# テンプレートからリポジトリを作成した直後に1回だけ実行され、
+# name_of_repository を実際のリポジトリ名に置換・リネームする。
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pages: write
+
+jobs:
+  init-template:
+    # テンプレートリポジトリ自身では実行しない
+    if: github.repository != 'ykunisato/jspsych-agent-template'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Replace name_of_repository in file contents
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          echo "📝 Replacing 'name_of_repository' in file contents..."
+          echo "   REPO_NAME: $REPO_NAME"
+
+          # plugins.js 内の name_of_repository を置換
+          if [ -f "name_of_repository/plugins.js" ]; then
+            sed -i "s|name_of_repository|${REPO_NAME}|g" "name_of_repository/plugins.js"
+            echo "   ✅ name_of_repository/plugins.js"
+          fi
+
+          # 各 HTML ファイル内の name_of_repository を置換
+          for f in \
+            "cema_name_of_repository.html" \
+            "demo_name_of_repository.html" \
+            "name_of_repository.html"; do
+            if [ -f "$f" ]; then
+              sed -i "s|name_of_repository|${REPO_NAME}|g" "$f"
+              echo "   ✅ $f"
+            fi
+          done
+
+      - name: Rename folder and HTML files
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          echo "📂 Renaming files and folder..."
+
+          # フォルダのリネーム
+          if [ -d "name_of_repository" ] && [ "name_of_repository" != "${REPO_NAME}" ]; then
+            mv "name_of_repository" "${REPO_NAME}"
+            echo "   ✅ name_of_repository/ → ${REPO_NAME}/"
+          fi
+
+          # HTML ファイルのリネーム
+          if [ -f "cema_name_of_repository.html" ]; then
+            mv "cema_name_of_repository.html" "cema_${REPO_NAME}.html"
+            echo "   ✅ cema_name_of_repository.html → cema_${REPO_NAME}.html"
+          fi
+          if [ -f "demo_name_of_repository.html" ]; then
+            mv "demo_name_of_repository.html" "demo_${REPO_NAME}.html"
+            echo "   ✅ demo_name_of_repository.html → demo_${REPO_NAME}.html"
+          fi
+          if [ -f "name_of_repository.html" ]; then
+            mv "name_of_repository.html" "${REPO_NAME}.html"
+            echo "   ✅ name_of_repository.html → ${REPO_NAME}.html"
+          fi
+
+      - name: Overwrite README.md
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+          REPO_OWNER: ${{ github.repository_owner }}
+        run: |
+          echo "📄 Writing README.md..."
+          printf '# %s\nhttps://%s.github.io/%s/demo_%s.html\n' \
+            "${REPO_NAME}" "${REPO_OWNER}" "${REPO_NAME}" "${REPO_NAME}" > README.md
+          echo "   ✅ README.md"
+
+      - name: Enable GitHub Pages
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🌐 Enabling GitHub Pages (source: main branch, root)..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/pages" \
+            -d '{"source":{"branch":"main","path":"/"}}')
+          if [ "$STATUS" = "201" ] || [ "$STATUS" = "409" ]; then
+            echo "   ✅ GitHub Pages enabled (status: ${STATUS})"
+          else
+            echo "   ⚠️ GitHub Pages setup returned HTTP ${STATUS} (may need manual setup)"
+          fi
+
+      - name: Remove this workflow (one-time use)
+        run: |
+          rm -f .github/workflows/init-template.yml
+          echo "🗑️ init-template.yml removed (one-time initialization complete)"
+
+      - name: Commit changes
+        env:
+          REPO_NAME: ${{ github.event.repository.name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet || git commit -m "🎉 Initialize repository from template
+
+          - Replaced name_of_repository → ${REPO_NAME} in file contents
+          - Renamed name_of_repository/ → ${REPO_NAME}/
+          - Renamed HTML files (cema_, demo_, main) to match ${REPO_NAME}
+          - Removed init-template.yml (no longer needed)"
+          git push

@@ -1,0 +1,51 @@
+name: Copilot Setup Steps
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify HTML files at root
+        run: |
+          echo "🔍 Checking root HTML files..."
+          for f in name_of_repository.html demo_name_of_repository.html cema_name_of_repository.html; do
+            if [ -f "$f" ]; then
+              echo "✅ $f found"
+              if grep -q 'charset="UTF-8"\|charset=UTF-8' "$f"; then
+                echo "   ✅ UTF-8 charset declared"
+              else
+                echo "   ⚠️  Warning: UTF-8 charset not found in $f"
+              fi
+            else
+              echo "ℹ️  $f not found"
+            fi
+          done
+
+      - name: Verify task folder structure
+        run: |
+          echo "🔍 Checking task folder structure..."
+          if [ -d "name_of_repository" ]; then
+            echo "✅ name_of_repository/ folder found"
+            [ -f "name_of_repository/plugins.js" ] && echo "   ✅ plugins.js found"
+            [ -f "name_of_repository/task.js" ]    && echo "   ✅ task.js found"
+            [ -d "name_of_repository/jspsych" ]    && echo "   ✅ jspsych/ found"
+            [ -d "name_of_repository/init_run" ]   && echo "   ✅ init_run/ found"
+            [ -d "name_of_repository/stimuli" ]    && echo "   ✅ stimuli/ found"
+          else
+            echo "ℹ️  name_of_repository/ folder not found (may already be renamed)"
+          fi
